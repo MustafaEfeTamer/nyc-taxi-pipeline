@@ -63,91 +63,53 @@ Do not commit large data files to GitHub. Download these files locally:
 
 The `.gitignore` keeps large raw and Delta files out of version control.
 
-## Quick Start
+## Quick Start (End-to-End Execution)
 
-Start infrastructure:
+To run the entire pipeline from scratch, follow these sequential steps:
 
-```powershell
-docker compose up -d kafka zookeeper mlflow spark
-```
+### 1. Docker & Environment Setup
 
-### Producer Dry Run
-
-Use dry-run mode before starting Kafka publishing. It reads the Parquet file, normalizes rows to JSON-compatible records, and validates batching without connecting to Kafka.
-
-Docker one-shot:
+Start by cleaning up any old containers, installing local dependencies, and starting the new infrastructure (using `--build` to ensure Spark requirements are installed):
 
 ```powershell
-docker compose --profile pipeline build producer
-docker compose --profile pipeline run --rm --no-deps -e PRODUCER_DRY_RUN=true -e PRODUCER_MAX_ROWS=1000 -e PRODUCER_BATCH_SIZE=250 producer
+docker compose down 
+pip install -r requirements.txt
+docker compose up -d --build
+docker compose --profile pipeline up -d producer
 ```
 
-Use `-e LOG_LEVEL=DEBUG` to print a short sample JSON payload in dry-run logs.
+### 2. Data Processing (Bronze, Silver, Gold Layers)
 
-### Publish To Kafka
-
-After dry-run succeeds, publish records to Kafka:
+Run the Spark jobs to process the data through the medallion architecture. 
 
 ```powershell
-docker compose --profile pipeline run --rm producer
+# Ingest data from Kafka to Bronze layer
+docker compose exec spark python spark_jobs/stream_to_bronze.py
+
+# Clean and enrich data from Bronze to Silver layer
+docker compose exec spark python spark_jobs/bronze_to_silver.py
+
+# Create ML features from Silver to Gold layer
+docker compose exec spark python spark_jobs/silver_to_gold.py
 ```
 
-Producer settings are controlled with environment variables:
+### 3. Model Training
 
-```text
-PRODUCER_MAX_ROWS=10000       # use 0 to replay all rows
-PRODUCER_BATCH_SIZE=500       # Kafka publish/flush batch size
-PRODUCER_SLEEP_SECONDS=0.2    # delay between batches for pseudo-streaming
-PRODUCER_KEY_FIELD=PULocationID
-PRODUCER_DRY_RUN=false        # true validates Parquet/JSON without Kafka publish
-```
-
-### Build Bronze Layer
-
-After the producer publishes messages to Kafka, run the streaming job. It reads JSON messages from Kafka and writes raw records with Kafka metadata to Delta Bronze.
+Train the machine learning model using the features in the Gold layer. Metrics and models are logged to MLflow.
 
 ```powershell
-docker compose exec spark spark-submit spark_jobs/stream_to_bronze.py
+docker compose exec spark python ml_pipeline/model_training.py
 ```
+*(You can view MLflow tracking at `http://localhost:5000`)*
 
-Useful Bronze environment variables:
+### 4. Dashboard
 
-```text
-BRONZE_STARTING_OFFSETS=earliest
-BRONZE_MAX_OFFSETS_PER_TRIGGER=     # optional throttle
-BRONZE_CHECKPOINT_PATH=/app/data/delta/checkpoints/bronze_yellow_taxi_trips
-```
-
-### Build Silver Layer
-
-The Silver job parses Bronze JSON, filters invalid trips, calculates time features, and enriches pickup/dropoff IDs with `taxi_zone_lookup.csv`.
+Finally, launch the local Streamlit dashboard to visualize the predictions and data:
 
 ```powershell
-docker compose exec spark spark-submit spark_jobs/bronze_to_silver.py
-```
-
-Inspect Silver output:
-
-```powershell
-docker compose exec spark spark-sql -e 'SELECT pickup_borough, dropoff_borough, COUNT(*) AS trips FROM delta.`/app/data/delta/silver/yellow_taxi_trips` GROUP BY pickup_borough, dropoff_borough LIMIT 10'
-```
-
-### Build Gold Layer
-
-```powershell
-docker compose exec spark spark-submit spark_jobs/silver_to_gold.py
-```
-
-Run model training:
-
-```powershell
-docker compose exec spark spark-submit ml_pipeline/model_training.py
-```
-
-MLflow UI:
-
-```text
-http://localhost:5000
+$env:DELTA_GOLD_PATH = "data/delta/gold/fare_features"
+$env:MLFLOW_TRACKING_URI = "http://localhost:5000"
+streamlit run ml_pipeline/dashboard.py
 ```
 
 ## Team Workflow
