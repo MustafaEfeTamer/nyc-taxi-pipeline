@@ -56,12 +56,16 @@ data/           Local-only raw, lookup, and Delta data folders
 
 ## Data Files
 
-Do not commit large data files to GitHub. Download these files locally:
+Large data files are not included in this GitHub repository. To run the project, please download the required data from the Google Drive link below:
 
-- `data/raw/yellow_tripdata_2023-01.parquet`
-- `data/lookup/taxi_zone_lookup.csv`
+- **Google Drive Data Folder**: [https://drive.google.com/drive/folders/10pVzS5B5Qz2yVWvjL8gz1azIYZ4DQ-8l]
 
-The `.gitignore` keeps large raw and Delta files out of version control.
+Once downloaded, place the files into their respective directories as follows:
+
+- Place `yellow_tripdata_2023-01.parquet` -> into `data/raw/`
+- Place `taxi_zone_lookup.csv` -> into `data/lookup/`
+
+These large files are tracked by `.gitignore` to prevent accidental commits to GitHub.
 
 ## Quick Start (End-to-End Execution)
 
