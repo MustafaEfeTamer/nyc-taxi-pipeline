@@ -115,3 +115,39 @@ $env:DELTA_GOLD_PATH = "data/delta/gold/fare_features"
 $env:MLFLOW_TRACKING_URI = "http://localhost:5000"
 streamlit run ml_pipeline/dashboard.py
 ```
+
+## CI/CD Pipeline (Jenkins)
+
+This repository is equipped with a declarative Jenkins CI/CD pipeline. The pipeline automates the code validation, image building, testing, and deployment processes.
+
+### Jenkins Pipeline Stages
+
+1. **Checkout**: Clones the latest code from the repository.
+2. **Lint**: Uses `flake8` to perform syntax and style checks on Python files to ensure code quality.
+3. **Build**: Builds the Docker images (`spark` and `producer`) defined in `docker-compose.yml`.
+4. **Test**: Runs Python unit tests inside a temporary environment using `pytest`. Test reports are generated as JUnit XML.
+5. **Deploy**: Simulates a staging deployment by bringing up the infrastructure containers via `docker compose up -d`.
+
+### Prerequisites for Jenkins
+- Jenkins node must have `docker` and `docker compose` installed.
+- Python 3.x and `pip` must be available on the Jenkins agent.
+- Ensure the Jenkins user has permissions to run docker commands (e.g., added to the `docker` group).
+
+### Running Jenkins Locally
+
+We have included a customized Jenkins container in the `docker-compose.yml` that supports Docker-out-of-Docker (DooD), allowing it to build and run containers on your host machine.
+
+To start Jenkins along with the rest of the infrastructure:
+```powershell
+docker compose up -d jenkins
+```
+
+**Accessing Jenkins:**
+1. Navigate to `http://localhost:8081` in your web browser.
+2. To get the initial admin password, check the Jenkins container logs:
+```powershell
+docker compose logs jenkins
+```
+3. Look for the block of text containing the password (e.g., `Please use the following password to proceed to installation:`).
+4. Paste the password, install suggested plugins, and set up your admin user.
+5. Create a new Pipeline job, point it to your repository (or use the "Pipeline script from SCM" option if you have committed the changes), and Jenkins will automatically read the `Jenkinsfile` and execute the CI/CD stages.

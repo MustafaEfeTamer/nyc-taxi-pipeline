@@ -94,3 +94,15 @@ services:
     working_dir: /app
     profiles:
       - pipeline
+
+  jenkins:
+    build:
+      context: ./jenkins
+    container_name: nyc-taxi-jenkins
+    ports:
+      - "8081:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/var/jenkins_home/workspace/nyc-taxi-pipeline
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
