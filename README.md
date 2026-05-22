@@ -115,14 +115,3 @@ $env:DELTA_GOLD_PATH = "data/delta/gold/fare_features"
 $env:MLFLOW_TRACKING_URI = "http://localhost:5000"
 streamlit run ml_pipeline/dashboard.py
 ```
-
-## Team Workflow
-
-Suggested feature branches:
-
-- `feature/kafka-producer`
-- `feature/spark-bronze-silver`
-- `feature/mlflow-training`
-- `feature/docker-docs`
-
-Each member should make real, explainable commits in their own branch.
