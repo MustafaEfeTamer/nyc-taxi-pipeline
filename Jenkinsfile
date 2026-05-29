@@ -37,15 +37,15 @@ pipeline {
                 echo 'Running SonarQube Code Quality Analysis...'
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh '''
-                        # sonar-scanner'ı indir (eğer yoksa)
-                        if ! command -v sonar-scanner &> /dev/null; then
-                            apt-get install -y unzip --break-system-packages 2>/dev/null || true
+                        # sonar-scanner sadece yoksa indir, varsa atla
+                        if [ ! -f /usr/local/bin/sonar-scanner ]; then
+                            apt-get install -y unzip 2>/dev/null || true
                             curl -sSLo /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
-                            unzip -q /tmp/sonar-scanner.zip -d /opt/
+                            unzip -qo /tmp/sonar-scanner.zip -d /opt/
                             ln -sf /opt/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner /usr/local/bin/sonar-scanner
                         fi
 
-                        # Analizi çalıştır
+                        # Analizi calistir
                         sonar-scanner \
                             -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.token=$SONAR_TOKEN
