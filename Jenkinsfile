@@ -58,8 +58,9 @@ pipeline {
             steps {
                 echo 'Building Docker Images...'
                 sh '''
-                    # Build all necessary images with docker compose
-                    docker compose -f docker-compose.yml build
+                    # Sadece spark ve producer imajlarini insa et
+                    # jenkins imaji dahil edilmiyor: zaten calisiyor ve gereksiz yere rebuild yapar
+                    docker compose -f docker-compose.yml build spark producer
                 '''
             }
         }
