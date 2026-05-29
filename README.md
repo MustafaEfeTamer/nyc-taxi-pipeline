@@ -142,7 +142,7 @@ To start Jenkins along with the rest of the infrastructure:
 docker compose up -d jenkins
 ```
 
-**Accessing Jenkins:**
+**Accessing Jenkins::**
 1. Navigate to `http://localhost:8081` in your web browser.
 2. To get the initial admin password, check the Jenkins container logs:
 ```powershell
@@ -150,4 +150,4 @@ docker compose logs jenkins
 ```
 3. Look for the block of text containing the password (e.g., `Please use the following password to proceed to installation:`).
 4. Paste the password, install suggested plugins, and set up your admin user.
-5. Create a new Pipeline job, point it to your repository (or use the "Pipeline script from SCM" option if you have committed the changes), and Jenkins will automatically read the `Jenkinsfile` and execute the CI/CD stages.
+5. Create a new Pipeline job, point it to your repository (or use the "Pipeline script from SCM" option if you have committed the changes), and Jenkins will automatically read the `Jenkinsfile` and execute the CI/CD stages.
