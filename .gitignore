@@ -36,3 +36,5 @@ Thumbs.db
 .idea/
 .vscode/
 temp_plots/
+ngrok.exe
+
