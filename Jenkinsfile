@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout()
+    }
+
     environment {
         COMPOSE_PROJECT_NAME = "nyc-taxi-pipeline-ci"
         PYTHON_VERSION = "3.11"
@@ -13,7 +17,7 @@ pipeline {
                 echo 'Running Python Linter...'
                 sh '''
                     # Install flake8 and run it
-                    pip install flake8
+                    pip install flake8 --break-system-packages
                     flake8 ml_pipeline/ spark_jobs/ producer/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
                 '''
             }
@@ -34,7 +38,7 @@ pipeline {
                 echo 'Running Unit Tests...'
                 sh '''
                     # Install test dependencies and run pytest
-                    pip install -r tests/requirements-test.txt
+                    pip install -r tests/requirements-test.txt --break-system-packages
                     pytest tests/ --junitxml=reports/test-results.xml
                 '''
             }
