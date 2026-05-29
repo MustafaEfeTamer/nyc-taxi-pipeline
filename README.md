@@ -4,6 +4,8 @@ End-to-end big data project for NYC Yellow Taxi trip records. The pipeline repla
 
 ## Project Scope
 
+sadece bir test
+
 - Dataset: NYC TLC Yellow Taxi Trip Records
 - Initial data target: `yellow_tripdata_2023-01.parquet`
 - Lookup data: `taxi_zone_lookup.csv`
@@ -142,7 +144,7 @@ To start Jenkins along with the rest of the infrastructure:
 docker compose up -d jenkins
 ```
 
-**Accessing Jenkins::**
+**Accessing Jenkins:**
 1. Navigate to `http://localhost:8081` in your web browser.
 2. To get the initial admin password, check the Jenkins container logs:
 ```powershell
