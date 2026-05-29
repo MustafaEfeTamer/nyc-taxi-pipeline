@@ -5,6 +5,13 @@ pipeline {
         skipDefaultCheckout()
     }
 
+    triggers {
+        // GitHub'dan webhook sinyali geldiğinde her zaman build başlat
+        // Yerel workspace değişiklik kontrolü yapmadan direkt tetiklenir
+        githubPush()
+    }
+
+
     environment {
         COMPOSE_PROJECT_NAME = "nyc-taxi-pipeline-ci"
         PYTHON_VERSION = "3.11"
