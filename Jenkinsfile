@@ -8,6 +8,8 @@ pipeline {
     environment {
         COMPOSE_PROJECT_NAME = "nyc-taxi-pipeline-ci"
         PYTHON_VERSION = "3.11"
+        // SonarQube sunucusu: Jenkins konteyneri içinden Docker iç ağı üzerinden erişir
+        SONAR_HOST_URL = "http://nyc-taxi-sonarqube:9000"
     }
 
 
@@ -20,6 +22,28 @@ pipeline {
                     pip install flake8 --break-system-packages
                     flake8 ml_pipeline/ spark_jobs/ producer/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
                 '''
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Running SonarQube Code Quality Analysis...'
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        # sonar-scanner'ı indir (eğer yoksa)
+                        if ! command -v sonar-scanner &> /dev/null; then
+                            apt-get install -y unzip --break-system-packages 2>/dev/null || true
+                            curl -sSLo /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
+                            unzip -q /tmp/sonar-scanner.zip -d /opt/
+                            ln -sf /opt/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner /usr/local/bin/sonar-scanner
+                        fi
+
+                        # Analizi çalıştır
+                        sonar-scanner \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$SONAR_TOKEN
+                    '''
+                }
             }
         }
 
