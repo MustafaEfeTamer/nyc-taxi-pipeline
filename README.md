@@ -4,7 +4,7 @@ End-to-end big data project for NYC Yellow Taxi trip records. The pipeline repla
 
 ## Project Scope
 
-sadece bir test 2
+işte bu be olduu
 
 - Dataset: NYC TLC Yellow Taxi Trip Records
 - Initial data target: `yellow_tripdata_2023-01.parquet`
@@ -113,8 +113,6 @@ docker compose exec spark python ml_pipeline/model_training.py
 Finally, launch the local Streamlit dashboard to visualize the predictions and data:
 
 ```powershell
-$env:DELTA_GOLD_PATH = "data/delta/gold/fare_features"
-$env:MLFLOW_TRACKING_URI = "http://localhost:5000"
 streamlit run ml_pipeline/dashboard.py
 ```
 
