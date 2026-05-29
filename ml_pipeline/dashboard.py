@@ -1,9 +1,15 @@
+import os
+from dotenv import load_dotenv
+
+# .env dosyasındaki ortam değişkenlerini yüklüyoruz
+load_dotenv()
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
+
 from pyspark.sql import SparkSession
 from delta import configure_spark_with_delta_pip
 import mlflow
