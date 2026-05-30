@@ -2,21 +2,22 @@ FROM jenkins/jenkins:lts
 
 USER root
 
-# ─── Sistem bağımlılıkları ────────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y \
+# ─── Sistem bağımlılıkları (--no-install-recommends ile minimal tutulur) ──────
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    gnupg \
-    lsb-release \
-    unzip \
     wget \
+    unzip \
+    lsb-release \
     python3 \
     python3-pip \
     python3-venv \
  && rm -rf /var/lib/apt/lists/*
 
 # ─── Docker CLI + Compose Plugin ─────────────────────────────────────────────
-RUN mkdir -m 0755 -p /etc/apt/keyrings \
+# gnupg yerine gpg (daha hafif) kullanılır; --no-install-recommends kritik
+RUN apt-get update && apt-get install -y --no-install-recommends gpg \
+ && mkdir -m 0755 -p /etc/apt/keyrings \
  && curl -fsSL https://download.docker.com/linux/debian/gpg \
     | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
  && echo \
@@ -24,10 +25,12 @@ RUN mkdir -m 0755 -p /etc/apt/keyrings \
     https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
     | tee /etc/apt/sources.list.d/docker.list > /dev/null \
  && apt-get update \
- && apt-get install -y docker-ce-cli docker-compose-plugin \
+ && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
  && rm -rf /var/lib/apt/lists/*
 
 # ─── SonarQube Scanner (image build sırasında kurulur, her build'de indirilmez) ─
+# Sabit versiyon → cache'lenebilir, ağ kesintisine karşı retry mekanizması yok
+# ama --no-cache-dir ve doğrudan binary sayesinde çok daha küçük (~50 MB zip)
 ARG SONAR_SCANNER_VERSION=6.2.1.4610
 RUN curl -sSLo /tmp/sonar-scanner.zip \
     "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip" \
@@ -37,6 +40,5 @@ RUN curl -sSLo /tmp/sonar-scanner.zip \
  && rm /tmp/sonar-scanner.zip \
  && sonar-scanner --version
 
-# ─── Jenkins kullanıcısı root grupta (DooD için) ─────────────────────────────
-# Yerel geliştirme ortamı için root ile çalışıyoruz.
-# Production'da docker grubunu host GID'i ile eşleştirin.
+# ─── Jenkins root olarak çalışır (DooD için, yerel geliştirme ortamı) ─────────
+# Production'da: docker group'u host GID'i ile eşleştirin
