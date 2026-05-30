@@ -2,5 +2,5 @@ projectKey=nyc-taxi-pipeline
 serverUrl=http://nyc-taxi-sonarqube:9000
 serverVersion=26.5.0.122743
 dashboardUrl=http://nyc-taxi-sonarqube:9000/dashboard?id=nyc-taxi-pipeline
-ceTaskId=ed42cde3-7cea-429c-96dd-ccdb05808626
-ceTaskUrl=http://nyc-taxi-sonarqube:9000/api/ce/task?id=ed42cde3-7cea-429c-96dd-ccdb05808626
+ceTaskId=f9294411-5d24-410b-adc1-5ff08d1b5075
+ceTaskUrl=http://nyc-taxi-sonarqube:9000/api/ce/task?id=f9294411-5d24-410b-adc1-5ff08d1b5075

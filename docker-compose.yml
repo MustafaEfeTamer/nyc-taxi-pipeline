@@ -2,6 +2,8 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: nyc-taxi-zookeeper
+    networks:
+      - nyc-taxi-net
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -16,6 +18,8 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: nyc-taxi-kafka
+    networks:
+      - nyc-taxi-net
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -43,6 +47,8 @@ services:
       dockerfile: Dockerfile
     image: nyc-taxi-spark:local
     container_name: nyc-taxi-spark
+    networks:
+      - nyc-taxi-net
     depends_on:
       kafka:
         condition: service_healthy
@@ -64,6 +70,8 @@ services:
   mlflow:
     image: python:3.11-slim
     container_name: nyc-taxi-mlflow
+    networks:
+      - nyc-taxi-net
     ports:
       - "5000:5000"
     volumes:
@@ -79,6 +87,8 @@ services:
     build:
       context: ./producer
     container_name: nyc-taxi-producer
+    networks:
+      - nyc-taxi-net
     depends_on:
       kafka:
         condition: service_healthy
@@ -95,22 +105,12 @@ services:
     profiles:
       - pipeline
 
-  jenkins:
-    build:
-      context: ./jenkins
-    container_name: nyc-taxi-jenkins
-    ports:
-      - "8081:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/var/jenkins_home/workspace/nyc-taxi-pipeline
-      - jenkins_data:/var/jenkins_home
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
-
+  # ─── SonarQube ──────────────────────────────────────────────────────────────
   sonarqube:
     image: sonarqube:community
     container_name: nyc-taxi-sonarqube
+    networks:
+      - nyc-taxi-net
     ports:
       - "9000:9000"
     environment:
@@ -120,14 +120,40 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q 'UP'"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status 2>/dev/null | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
-      retries: 10
+      retries: 15
+      start_period: 60s
 
+  # ─── Jenkins ────────────────────────────────────────────────────────────────
+  jenkins:
+    build:
+      context: ./jenkins
+    container_name: nyc-taxi-jenkins
+    networks:
+      - nyc-taxi-net
+    # Jenkins başlamadan önce SonarQube sağlıklı olsun
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/var/jenkins_home/workspace/nyc-taxi-pipeline
+      - jenkins_data:/var/jenkins_home
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
   jenkins_data:
   sonarqube_data:
   sonarqube_logs:
   sonarqube_extensions:
 
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  nyc-taxi-net:
+    driver: bridge

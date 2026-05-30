@@ -2,91 +2,128 @@ pipeline {
     agent any
 
     options {
-        skipDefaultCheckout()
+        // Workspace'i temizle ama checkout'u otomatik yap (skipDefaultCheckout kaldırıldı)
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
     }
 
     triggers {
-        // GitHub'dan webhook sinyali geldiğinde her zaman build başlat
-        // Yerel workspace değişiklik kontrolü yapmadan direkt tetiklenir
         githubPush()
     }
 
-
     environment {
         COMPOSE_PROJECT_NAME = "nyc-taxi-pipeline-ci"
-        PYTHON_VERSION = "3.11"
-        // SonarQube sunucusu: Jenkins konteyneri içinden Docker iç ağı üzerinden erişir
-        SONAR_HOST_URL = "http://nyc-taxi-sonarqube:9000"
+        PYTHON_VERSION       = "3.11"
+        // Jenkins container içinden Docker iç ağı üzerinden SonarQube'a erişilir
+        SONAR_HOST_URL       = "http://nyc-taxi-sonarqube:9000"
+        REPORTS_DIR          = "reports"
     }
 
-
     stages {
+
+        // ──────────────────────────────────────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out source code...'
+                checkout scm
+                sh 'mkdir -p ${REPORTS_DIR}'
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
         stage('Lint') {
             steps {
-                echo 'Running Python Linter...'
+                echo '🔍 Running Python Linter (flake8)...'
                 sh '''
-                    # Install flake8 and run it
-                    pip install flake8 --break-system-packages
-                    flake8 ml_pipeline/ spark_jobs/ producer/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+                    pip install flake8 --break-system-packages -q
+                    flake8 ml_pipeline/ spark_jobs/ producer/ tests/ \
+                        --count \
+                        --select=E9,F63,F7,F82 \
+                        --show-source \
+                        --statistics \
+                        --output-file=${REPORTS_DIR}/flake8-report.txt || true
+                    cat ${REPORTS_DIR}/flake8-report.txt
                 '''
             }
         }
 
+        // ──────────────────────────────────────────────────────────────────────
+        stage('Test') {
+            steps {
+                echo '🧪 Running Unit Tests with Coverage...'
+                sh '''
+                    pip install -r tests/requirements-test.txt --break-system-packages -q
+                    pytest tests/ \
+                        --junitxml=${REPORTS_DIR}/test-results.xml \
+                        --cov=ml_pipeline \
+                        --cov=spark_jobs \
+                        --cov=producer \
+                        --cov-report=xml:${REPORTS_DIR}/coverage.xml \
+                        --cov-report=term-missing \
+                        -v
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: "${REPORTS_DIR}/test-results.xml"
+                }
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
-                echo 'Running SonarQube Code Quality Analysis...'
+                echo '📊 Running SonarQube Code Quality Analysis...'
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh '''
-                        # sonar-scanner sadece yoksa indir, varsa atla
-                        if [ ! -f /usr/local/bin/sonar-scanner ]; then
-                            apt-get install -y unzip 2>/dev/null || true
-                            curl -sSLo /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
-                            unzip -qo /tmp/sonar-scanner.zip -d /opt/
-                            ln -sf /opt/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner /usr/local/bin/sonar-scanner
-                        fi
+                        # SonarQube'un hazır olmasını bekle (max 3 dakika)
+                        echo "⏳ Waiting for SonarQube to be ready..."
+                        RETRIES=18
+                        COUNT=0
+                        until wget -qO- "${SONAR_HOST_URL}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; do
+                            COUNT=$((COUNT + 1))
+                            if [ "$COUNT" -ge "$RETRIES" ]; then
+                                echo "❌ SonarQube did not become ready in time!"
+                                exit 1
+                            fi
+                            echo "   SonarQube not ready yet (attempt ${COUNT}/${RETRIES}), waiting 10s..."
+                            sleep 10
+                        done
+                        echo "✅ SonarQube is ready!"
 
-                        # Analizi calistir
+                        # sonar-scanner imaja gömülü, doğrudan çalıştır
                         sonar-scanner \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
+                            -Dsonar.host.url="${SONAR_HOST_URL}" \
+                            -Dsonar.token="${SONAR_TOKEN}" \
+                            -Dsonar.working.directory="${WORKSPACE}/.scannerwork"
                     '''
                 }
             }
         }
 
+        // ──────────────────────────────────────────────────────────────────────
         stage('Build') {
             steps {
-                echo 'Building Docker Images...'
+                echo '🐳 Building Docker Images...'
                 sh '''
-                    # Sadece spark ve producer imajlarini insa et
-                    # jenkins imaji dahil edilmiyor: zaten calisiyor ve gereksiz yere rebuild yapar
+                    # Sadece uygulama imajlarını build et (jenkins/sonarqube değil)
                     docker compose -f docker-compose.yml build spark producer
                 '''
             }
         }
 
-        stage('Test') {
-            steps {
-                echo 'Running Unit Tests...'
-                sh '''
-                    # Install test dependencies and run pytest
-                    pip install -r tests/requirements-test.txt --break-system-packages
-                    pytest tests/ --junitxml=reports/test-results.xml
-                '''
-            }
-            post {
-                always {
-                    junit 'reports/test-results.xml'
-                }
-            }
-        }
-
+        // ──────────────────────────────────────────────────────────────────────
         stage('Deploy') {
+            // Sadece main branch'te deploy yap
+            when {
+                branch 'main'
+            }
             steps {
-                echo 'Deploying to Staging (Local Docker)...'
+                echo '🚀 Deploying to Local Docker (main branch only)...'
                 sh '''
-                    # Start the infrastructure
-                    docker compose -f docker-compose.yml up -d
+                    # Altyapı servislerini başlat (jenkins ve sonarqube hariç)
+                    docker compose -f docker-compose.yml up -d zookeeper kafka mlflow spark
                 '''
             }
         }
@@ -94,13 +131,20 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline finished. Cleaning up workspace if necessary.'
+            echo '🏁 Pipeline finished.'
+            // Workspace'i temizle (bir sonraki build için)
+            cleanWs(
+                cleanWhenSuccess: true,
+                cleanWhenFailure: false,
+                cleanWhenAborted: true
+            )
         }
         success {
-            echo 'All stages completed successfully!'
+            echo '✅ All stages completed successfully!'
+            echo "🔗 SonarQube Dashboard: ${SONAR_HOST_URL}/dashboard?id=nyc-taxi-pipeline"
         }
         failure {
-            echo 'Pipeline failed! Please check the logs.'
+            echo '❌ Pipeline failed! Check the stage logs above.'
         }
     }
 }
