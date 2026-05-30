@@ -9,6 +9,8 @@ pipeline {
     }
 
     triggers {
+        // ⚠️  Bu trigger'ın çalışması için Jenkins job ayarlarında:
+        //     Build Triggers → "GitHub hook trigger for GITScm polling" kutusunu işaretleyin!
         githubPush()
     }
 
