@@ -130,7 +130,7 @@ This repository is equipped with a declarative Jenkins CI/CD pipeline. The pipel
 - Jenkins node must have `docker` and `docker compose` installed.
 - Python 3.x and `pip` must be available on the Jenkins agent.
 - Ensure the Jenkins user has permissions to run docker commands (e.g., added to the `docker` group).
-
+efelikk
 ### Running Jenkins Locally
 
 We have included a customized Jenkins container in the `docker-compose.yml` that supports Docker-out-of-Docker (DooD), allowing it to build and run containers on your host machine.
