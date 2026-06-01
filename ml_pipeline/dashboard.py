@@ -14,6 +14,9 @@ from pyspark.sql import SparkSession
 from delta import configure_spark_with_delta_pip
 import mlflow
 
+# Sabit tanımlar
+MISSING_VALUES_COL = "Eksik Değer Sayısı"
+
 # Sayfa ayarları - Tasarım estetiği için geniş mod 
 st.set_page_config(page_title="NYC Taxi Fiyat Tahmini", layout="wide")
 
@@ -96,20 +99,20 @@ with tab1:
     st.markdown("---")
     st.subheader("🔍 Eksik Değer Analizi (Missing Values)")
     missing_data = df.isnull().sum().reset_index()
-    missing_data.columns = ['Kolonlar', 'Eksik Değer Sayısı']
+    missing_data.columns = ['Kolonlar', MISSING_VALUES_COL]
 
     col_miss1, col_miss2 = st.columns([1, 2])
     with col_miss1:
         # Streamlit 1.23+ versiyonları hide_index parametresini destekler
         st.dataframe(missing_data, hide_index=True, use_container_width=True)
-        if missing_data['Eksik Değer Sayısı'].sum() == 0:
+        if missing_data[MISSING_VALUES_COL].sum() == 0:
             st.success("Tüm eksik veriler (Null değerler) Delta Lake Silver/Gold katmanlarında başarıyla temizlenmiş!")
         else:
             st.warning("Veri setinde eksik değerler bulunuyor.")
             
     with col_miss2:
         fig_missing, ax_missing = plt.subplots(figsize=(8, 3))
-        sns.barplot(x='Kolonlar', y='Eksik Değer Sayısı', data=missing_data, palette="Reds", ax=ax_missing)
+        sns.barplot(x='Kolonlar', y=MISSING_VALUES_COL, data=missing_data, palette="Reds", ax=ax_missing)
         plt.xticks(rotation=45, ha='right')
         ax_missing.set_ylabel("Null Kayıt Sayısı")
         st.pyplot(fig_missing)
