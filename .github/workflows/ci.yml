@@ -63,6 +63,10 @@ jobs:
   test:
     name: 🧪 Test (pytest + coverage)
     runs-on: ubuntu-latest
+    permissions:
+      checks: write        # EnricoMi/publish-unit-test-result-action için gerekli
+      contents: read
+      actions: read
 
     steps:
       - name: Checkout source code
