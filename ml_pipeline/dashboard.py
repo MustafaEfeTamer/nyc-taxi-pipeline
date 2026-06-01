@@ -40,15 +40,15 @@ def load_data_from_gold():
         return df_spark.toPandas()
     except Exception as e:
         st.sidebar.error(f"Gerçek veri okunamadı (Test verisi yükleniyor): {e}")
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
         n_samples = 5000
         df = pd.DataFrame({
-            'trip_distance': np.random.uniform(0.5, 20.0, n_samples),
-            'pickup_hour': np.random.randint(0, 24, n_samples),
-            'pickup_day_of_week': np.random.randint(0, 7, n_samples),
-            'passenger_count': np.random.randint(1, 5, n_samples),
+            'trip_distance': rng.uniform(0.5, 20.0, n_samples),
+            'pickup_hour': rng.integers(0, 24, n_samples),
+            'pickup_day_of_week': rng.integers(0, 7, n_samples),
+            'passenger_count': rng.integers(1, 5, n_samples),
         })
-        df['label'] = 3.0 + (df['trip_distance'] * 2.5) + (df['pickup_hour'] * 0.5) + np.random.normal(0, 2, n_samples)
+        df['label'] = 3.0 + (df['trip_distance'] * 2.5) + (df['pickup_hour'] * 0.5) + rng.normal(0, 2, n_samples)
         return df
 
 df = load_data_from_gold()
