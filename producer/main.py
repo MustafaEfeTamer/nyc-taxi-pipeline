@@ -163,6 +163,22 @@ def validate_settings(max_rows: int, batch_size: int, sleep_seconds: float):
         raise ValueError("PRODUCER_SLEEP_SECONDS must be 0 or greater")
 
 
+def flush_batch(
+    producer,
+    topic: str,
+    records: list,
+    key_field: str,
+    rows_sent: int,
+    dry_run: bool,
+) -> int:
+    """Dispatch a full batch either to Kafka or to the dry-run logger."""
+    if dry_run:
+        return rows_sent + dry_run_batch(topic, records, key_field, rows_sent)
+    published = publish_batch(producer, topic, records, key_field)
+    logging.info("Published %s rows to topic '%s'", rows_sent + published, topic)
+    return rows_sent + published
+
+
 def main():
     configure_logging()
     signal.signal(signal.SIGINT, request_stop)
@@ -205,20 +221,12 @@ def main():
             pending_records.append(record)
 
             if len(pending_records) >= batch_size:
-                if dry_run:
-                    rows_sent += dry_run_batch(topic, pending_records, key_field, rows_sent)
-                else:
-                    rows_sent += publish_batch(producer, topic, pending_records, key_field)
-                    logging.info("Published %s rows to topic '%s'", rows_sent, topic)
+                rows_sent = flush_batch(producer, topic, pending_records, key_field, rows_sent, dry_run)
                 pending_records = []
                 time.sleep(sleep_seconds)
 
         if pending_records and not STOP_REQUESTED:
-            if dry_run:
-                rows_sent += dry_run_batch(topic, pending_records, key_field, rows_sent)
-            else:
-                rows_sent += publish_batch(producer, topic, pending_records, key_field)
-                logging.info("Published %s rows to topic '%s'", rows_sent, topic)
+            rows_sent = flush_batch(producer, topic, pending_records, key_field, rows_sent, dry_run)
 
     finally:
         if producer is not None:
