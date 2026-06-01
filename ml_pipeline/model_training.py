@@ -68,7 +68,7 @@ models = {
     "Linear_Regression": LinearRegression(),
     "Decision_Tree": DecisionTreeRegressor(max_depth=10, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
     "Random_Forest": RandomForestRegressor(n_estimators=50, max_depth=10, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
-    "Gradient_Boosted_Trees": GradientBoostingRegressor(n_estimators=50, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
+    "Gradient_Boosted_Trees": GradientBoostingRegressor(n_estimators=50, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0, learning_rate=0.1),
     "Generalized_Linear_Ridge": Ridge(alpha=1.0)  # GLR yerine Scikit-Learn'de Ridge kullanıyoruz
 }
 
