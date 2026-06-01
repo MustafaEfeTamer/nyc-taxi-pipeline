@@ -66,9 +66,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # PDF Adım 6'da istenen 5 regresyon modeli:
 models = {
     "Linear_Regression": LinearRegression(),
-    "Decision_Tree": DecisionTreeRegressor(max_depth=10, random_state=42, ccp_alpha=0.0),
-    "Random_Forest": RandomForestRegressor(n_estimators=50, max_depth=10, random_state=42, ccp_alpha=0.0),
-    "Gradient_Boosted_Trees": GradientBoostingRegressor(n_estimators=50, random_state=42, ccp_alpha=0.0),
+    "Decision_Tree": DecisionTreeRegressor(max_depth=10, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
+    "Random_Forest": RandomForestRegressor(n_estimators=50, max_depth=10, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
+    "Gradient_Boosted_Trees": GradientBoostingRegressor(n_estimators=50, random_state=42, ccp_alpha=0.0, min_samples_leaf=1, max_features=1.0),
     "Generalized_Linear_Ridge": Ridge(alpha=1.0)  # GLR yerine Scikit-Learn'de Ridge kullanıyoruz
 }
 
