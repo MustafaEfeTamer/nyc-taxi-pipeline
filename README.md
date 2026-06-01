@@ -1,7 +1,11 @@
 # NYC Yellow Taxi Big Data Pipeline
 
+[![CI/CD](https://github.com/MustafaEfeTamer/nyc-taxi-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/MustafaEfeTamer/nyc-taxi-pipeline/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MustafaEfeTamer_nyc-taxi-pipeline&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=MustafaEfeTamer_nyc-taxi-pipeline)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MustafaEfeTamer_nyc-taxi-pipeline&metric=coverage)](https://sonarcloud.io/summary/new_code?id=MustafaEfeTamer_nyc-taxi-pipeline)
+
 End-to-end big data project for NYC Yellow Taxi trip records. The pipeline replays historical TLC Parquet data through Kafka as a pseudo-stream, processes it with Spark, stores curated layers in Delta Lake, and tracks fare prediction experiments with MLflow.
-efes
+
 ## Project Scope
 
 - Dataset: NYC TLC Yellow Taxi Trip Records
@@ -114,38 +118,36 @@ Finally, launch the local Streamlit dashboard to visualize the predictions and d
 streamlit run ml_pipeline/dashboard.py
 ```
 
-## CI/CD Pipeline (Jenkins)
+## CI/CD Pipeline (GitHub Actions)
 
-This repository is equipped with a declarative Jenkins CI/CD pipeline. The pipeline automates the code validation, image building, testing, and deployment processes.
+Bu repo, GitHub Actions ile tam otomatik CI/CD pipeline'ına sahiptir.
+Her `push` ve `pull_request` olayında pipeline otomatik tetiklenir.
 
-### Jenkins Pipeline Stages
+### Pipeline Aşamaları
 
-1. **Checkout**: Clones the latest code from the repository.
-2. **Lint**: Uses `flake8` to perform syntax and style checks on Python files to ensure code quality.
-3. **Build**: Builds the Docker images (`spark` and `producer`) defined in `docker-compose.yml`.
-4. **Test**: Runs Python unit tests inside a temporary environment using `pytest`. Test reports are generated as JUnit XML.
-5. **Deploy**: Simulates a staging deployment by bringing up the infrastructure containers via `docker compose up -d`.
+| # | Job | Açıklama |
+|---|-----|----------|
+| 1 | 🔍 **Lint** | `flake8` ile Python sözdizimi ve kritik hata kontrolü |
+| 2 | 🧪 **Test** | `pytest` + coverage raporu (JUnit XML artifact) |
+| 3 | 📊 **SonarCloud** | Kod kalitesi ve güvenlik analizi (test'ten sonra çalışır) |
+| 4 | 🐳 **Build** | `spark` ve `producer` Docker image'larını build eder |
+| 5 | 🚀 **Deploy** | Sadece `main` branch'te çalışır |
 
-### Prerequisites for Jenkins
-- Jenkins node must have `docker` and `docker compose` installed.
-- Python 3.x and `pip` must be available on the Jenkins agent.
-- Ensure the Jenkins user has permissions to run docker commands (e.g., added to the `docker` group).
-efelikk
-### Running Jenkins Locally
+### Gerekli GitHub Secret'lar
 
-We have included a customized Jenkins container in the `docker-compose.yml` that supports Docker-out-of-Docker (DooD), allowing it to build and run containers on your host machine.
+Repo ayarlarında (`Settings → Secrets → Actions`) şu secret'ı ekleyin:
 
-To start Jenkins along with the rest of the infrastructure:
-```powershell
-docker compose up -d jenkins
-```
+| Secret | Açıklama |
+|--------|----------|
+| `SONAR_TOKEN` | [sonarcloud.io](https://sonarcloud.io) → My Account → Security → Generate Token |
 
-**Accessing Jenkins:**
-1. Navigate to `http://localhost:8081` in your web browser.
-2. To get the initial admin password, check the Jenkins container logs:
-```powershell
-docker compose logs jenkins
-```
-3. Look for the block of text containing the password (e.g., `Please use the following password to proceed to installation:`).
-4. Paste the password, install suggested plugins, and set up your admin user.
-5. Create a new Pipeline job, point it to your repository (or use the "Pipeline script from SCM" option if you have committed the changes), and Jenkins will automatically read the `Jenkinsfile` and execute the CI/CD stages.
+### SonarCloud Kurulumu
+
+1. [sonarcloud.io](https://sonarcloud.io) adresine GitHub hesabınla giriş yap
+2. `+` → **Analyze new project** → repoyu seç → import et
+3. Oluşturulan token'ı GitHub Secret olarak ekle (`SONAR_TOKEN`)
+4. `sonar-project.properties` içindeki `sonar.organization` değerini kendi SonarCloud org adınla güncelle
+
+### Workflow Dosyası
+
+Pipeline tanımı: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)

@@ -1,0 +1,202 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+# Aynı branch'e birden fazla push gelirse eskisini iptal et
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  REPORTS_DIR: reports
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────────
+  # JOB 1 — Lint
+  # ──────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: 🔍 Lint (flake8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install flake8
+        run: pip install flake8==7.0.0
+
+      - name: Create reports directory
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      - name: Run flake8
+        run: |
+          flake8 ml_pipeline/ spark_jobs/ producer/ tests/ \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --output-file=${{ env.REPORTS_DIR }}/flake8-report.txt || true
+          cat ${{ env.REPORTS_DIR }}/flake8-report.txt
+
+      - name: Upload lint report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flake8-report
+          path: ${{ env.REPORTS_DIR }}/flake8-report.txt
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Test
+  # ──────────────────────────────────────────────────────────────────────────────
+  test:
+    name: 🧪 Test (pytest + coverage)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-test.txt
+
+      - name: Create reports directory
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ \
+            --junitxml=${{ env.REPORTS_DIR }}/test-results.xml \
+            --cov=ml_pipeline \
+            --cov=spark_jobs \
+            --cov=producer \
+            --cov-report=xml:${{ env.REPORTS_DIR }}/coverage.xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            ${{ env.REPORTS_DIR }}/test-results.xml
+            ${{ env.REPORTS_DIR }}/coverage.xml
+          retention-days: 7
+
+      - name: Publish test summary
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: ${{ env.REPORTS_DIR }}/test-results.xml
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # JOB 3 — SonarCloud
+  # ──────────────────────────────────────────────────────────────────────────────
+  sonarcloud:
+    name: 📊 SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: test  # Coverage raporunu kullanacağı için test'ten sonra çalışır
+
+    steps:
+      - name: Checkout source code (full history for blame info)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clone SonarCloud'u olumsuz etkiler
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install test dependencies (coverage için)
+        run: pip install -r tests/requirements-test.txt
+
+      - name: Create reports directory
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      - name: Run pytest (coverage raporu üret)
+        run: |
+          pytest tests/ \
+            --junitxml=${{ env.REPORTS_DIR }}/test-results.xml \
+            --cov=ml_pipeline \
+            --cov=spark_jobs \
+            --cov=producer \
+            --cov-report=xml:${{ env.REPORTS_DIR }}/coverage.xml \
+            -q || true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # PR dekorasyonu için
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # sonarcloud.io → Security
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # JOB 4 — Build Docker Images
+  # ──────────────────────────────────────────────────────────────────────────────
+  build:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build spark image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./spark_jobs
+          push: false
+          tags: nyc-taxi-spark:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build producer image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./producer
+          push: false
+          tags: nyc-taxi-producer:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # JOB 5 — Deploy (sadece main branch)
+  # ──────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy (main only)
+    runs-on: ubuntu-latest
+    needs: [build, sonarcloud]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deployment placeholder
+        run: |
+          echo "✅ Tüm kontroller başarılı — deployment tetiklendi."
+          echo "📦 Branch : ${{ github.ref_name }}"
+          echo "🔖 Commit : ${{ github.sha }}"
+          echo ""
+          echo "ℹ️  Gerçek deployment için bu adıma SSH/cloud CLI komutları eklenebilir."
+          echo "    Örnek: ssh deploy@sunucu 'docker compose pull && docker compose up -d'"

@@ -38,3 +38,8 @@ Thumbs.db
 temp_plots/
 ngrok.exe
 
+# SonarCloud / SonarQube scanner geçici çıktıları
+.scannerwork/
+
+# CI raporları (GitHub Actions artifact olarak yükleniyor)
+reports/
