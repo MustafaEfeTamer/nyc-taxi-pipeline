@@ -8,6 +8,8 @@ End-to-end big data project for NYC Yellow Taxi trip records. The pipeline repla
 
 ## Project Scope
 
+efe
+
 - Dataset: NYC TLC Yellow Taxi Trip Records
 - Initial data target: `yellow_tripdata_2023-01.parquet`
 - Lookup data: `taxi_zone_lookup.csv`
