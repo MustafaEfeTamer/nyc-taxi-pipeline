@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       checks: write        # EnricoMi/publish-unit-test-result-action için gerekli
+      pull-requests: write # PR'lara test sonucu yorumu atmak için gerekli
       contents: read
       actions: read
 
