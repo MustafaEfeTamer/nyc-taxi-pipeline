@@ -1,5 +1,10 @@
-pyspark==3.5.1
-delta-spark==3.2.0
-mlflow==2.12.2
-scikit-learn
-seaborn
+# pyspark, bitnami/spark base image içinde zaten mevcut olduğundan buraya dahil edilmedi.
+# PyPI'da pyspark için binary wheel (bdist_wheel) bulunmadığından --only-binary :all: ile uyumsuz olurdu.
+delta-spark==3.2.0 \
+    --hash=sha256:c4ff3fa7218e58a702cb71eb64384b0005c4d6f0bbdd0fe0b38a53564d946e09
+mlflow==2.12.2 \
+    --hash=sha256:38dd04710fe64ee8229b7233b4d91db32c3ff887934c40d926246a566c886c0b
+scikit-learn==1.8.0 \
+    --hash=sha256:ada8121bcb4dac28d930febc791a69f7cb1673c8495e5eee274190b73a4559c1
+seaborn==0.13.2 \
+    --hash=sha256:636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987
