@@ -1,0 +1,63 @@
+version: 2
+updates:
+  # GitHub Actions paketleri
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # Ana Dizin Python Paketleri
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-main:
+        patterns:
+          - "*"
+
+  # Producer Python Paketleri
+  - package-ecosystem: "pip"
+    directory: "/producer"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-producer:
+        patterns:
+          - "*"
+
+  # Spark Jobs Python Paketleri
+  - package-ecosystem: "pip"
+    directory: "/spark_jobs"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-spark:
+        patterns:
+          - "*"
+
+  # ML Pipeline Python Paketleri
+  - package-ecosystem: "pip"
+    directory: "/ml_pipeline"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-ml:
+        patterns:
+          - "*"
+
+  # Docker Base İmajları (Producer)
+  - package-ecosystem: "docker"
+    directory: "/producer"
+    schedule:
+      interval: "weekly"
+
+  # Docker Base İmajları (Spark Jobs)
+  - package-ecosystem: "docker"
+    directory: "/spark_jobs"
+    schedule:
+      interval: "weekly"
