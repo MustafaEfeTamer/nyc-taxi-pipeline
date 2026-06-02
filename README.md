@@ -17,34 +17,44 @@ End-to-end big data project for NYC Yellow Taxi trip records. The pipeline repla
 ## Architecture
 
 ```text
-NYC Yellow Taxi Parquet
-        |
-        v
-Kafka Producer
-        |
-        v
-Kafka topic: yellow_taxi_trips
-        |
-        v
-Spark Structured Streaming
-        |
-        v
-Delta Bronze
-        |
-        v
-Spark batch cleaning + zone lookup join
-        |
-        v
-Delta Silver
-        |
-        v
-Spark batch feature engineering
-        |
-        v
-Delta Gold
-        |
-        v
-ML training + MLflow tracking
+┌───────────────────────────────────────────────────────────────────────┐
+│                 CI/CD & DevSecOps (GitHub Actions)                    │
+│                                                                       │
+│  [Flake8] ──> [Pytest] ──> [Trivy Scan] ──> [SonarQube] ──> [Build]   │
+│   (Lint)       (Test)      (Security)       (Quality)      (Docker)   │
+│                                                                       │
+│  * Dependabot: Haftalık İmaj & Paket Zafiyet Taraması                 │
+└──────────────────────────────────────┬────────────────────────────────┘
+                                       │ (Otomatik Dağıtım/Çalıştırma)
+                                       ▼
+                             NYC Yellow Taxi Parquet
+                                       │
+                                       ▼
+                                 Kafka Producer
+                                       │
+                                       ▼
+                           Kafka topic: yellow_taxi_trips
+                                       │
+                                       ▼
+                           Spark Structured Streaming
+                                       │
+                                       ▼
+                                  Delta Bronze
+                                       │
+                                       ▼
+                       Spark batch cleaning + zone lookup
+                                       │
+                                       ▼
+                                  Delta Silver
+                                       │
+                                       ▼
+                         Spark batch feature engineering
+                                       │
+                                       ▼
+                                   Delta Gold
+                                       │
+                                       ▼
+                         ML training + MLflow tracking
 ```
 
 ## Repository Layout
@@ -129,9 +139,10 @@ Her `push` ve `pull_request` olayında pipeline otomatik tetiklenir.
 |---|-----|----------|
 | 1 | 🔍 **Lint** | `flake8` ile Python sözdizimi ve kritik hata kontrolü |
 | 2 | 🧪 **Test** | `pytest` + coverage raporu (JUnit XML artifact) |
-| 3 | 📊 **SonarCloud** | Kod kalitesi ve güvenlik analizi (test'ten sonra çalışır) |
-| 4 | 🐳 **Build** | `spark` ve `producer` Docker image'larını build eder |
-| 5 | 🚀 **Deploy** | Sadece `main` branch'te çalışır |
+| 3 | 🛡️ **Security**| `Trivy` ile bağımlılık (filesystem) ve Docker image zafiyet taraması |
+| 4 | 📊 **SonarCloud** | Kod kalitesi analizi (test'ten sonra çalışır) |
+| 5 | 🐳 **Build** | `spark` ve `producer` Docker image'larını build eder ve Trivy ile tarar |
+| 6 | 🚀 **Deploy** | Sadece `main` branch'te çalışır |
 
 ### Gerekli GitHub Secret'lar
 
